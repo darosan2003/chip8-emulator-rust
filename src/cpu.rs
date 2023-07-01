@@ -8,13 +8,14 @@ const MAX_MEMORY: usize = 4096;
 pub trait Cpu {
     fn new() -> Self;
     fn load_rom(&mut self, rom: &String);
+    fn advance_pc(&mut self);
 }
 
 pub struct Chip8 {
     pub v:      [u8; MAX_REG],
-    pub i:      u16,
-    pub pc:     u16,
-    pub sp:     u16,
+    pub i:      usize,
+    pub pc:     usize,
+    pub sp:     usize,
     pub mem:    [u8; MAX_MEMORY],
     pub stack:  [u16; MAX_STACK],
 }
@@ -27,5 +28,10 @@ impl Cpu for Chip8 {
     fn load_rom(&mut self, rom: &String) {
         let mut romfile: File = File::open(rom).unwrap();
         romfile.read(&mut self.mem[512..MAX_MEMORY]).unwrap();
+    }
+
+    fn advance_pc(&mut self) {
+        let opcode: u16 = (self.mem[self.pc] as u16 * 256) + self.mem[self.pc + 1] as u16;
+        self.pc = if self.pc + 2 >= MAX_MEMORY { 0 } else { self.pc + 2 };
     }
 }

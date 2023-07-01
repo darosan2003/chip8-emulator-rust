@@ -18,6 +18,8 @@ fn main() {
     let mut chip: Chip8 = Chip8::new();
     chip.load_rom(&args[1]);
 
-    println!("{:?}", chip.mem);
+    loop {
+        chip.advance_pc();
+    }
 
 }
