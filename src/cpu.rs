@@ -5,10 +5,48 @@ const MAX_REG: usize = 16;
 const MAX_STACK: usize = 16;
 const MAX_MEMORY: usize = 4096;
 
+pub enum Opcode {
+    Clear,
+    Return,
+    JumpAddr,
+    Call,
+    SkipEqualVxkk,
+    SkipNotEqualVxkk,
+    SkipEqualVxVy,
+    LoadVxkk,
+    AddVxkk,
+    LoadVxVy,
+    Or,
+    And,
+    Xor,
+    AddVxVy,
+    Subtract,
+    RightShift,
+    SubtractNotBorrow,
+    LeftShift,
+    SkipNotEqualVxVy,
+    LoadI,
+    JumpAddrV0,
+    Random,
+    Draw,
+    SkipIfVxPressed,
+    SkipIfVxNotPressed,
+    LoadVxDelayTimer,
+    LoadPressedKeyVx,
+    LoadDelayTimerVx,
+    LoadSoundTimerVx,
+    AddIVx,
+    LoadISpritePositionVx,
+    LoadIBCDVx,
+    LoadIVRegisters,
+    LoadVRegistersI,
+}
+
 pub trait Cpu {
     fn new() -> Self;
     fn load_rom(&mut self, rom: &String);
     fn advance_pc(&mut self);
+    fn process_opcode(opcode: &u16) -> Result<Opcode, &str>;
 }
 
 pub struct Chip8 {
@@ -33,5 +71,9 @@ impl Cpu for Chip8 {
     fn advance_pc(&mut self) {
         let opcode: u16 = (self.mem[self.pc] as u16 * 256) + self.mem[self.pc + 1] as u16;
         self.pc = if self.pc + 2 >= MAX_MEMORY { 0 } else { self.pc + 2 };
+    }
+
+    fn process_opcode(opcode: &u16) -> Result<Opcode, &str> {
+
     }
 }
