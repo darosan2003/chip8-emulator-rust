@@ -5,6 +5,7 @@ const MAX_REG: usize = 16;
 const MAX_STACK: usize = 16;
 const MAX_MEMORY: usize = 4096;
 
+#[derive(Debug)]
 pub enum Opcode {
     Clear,
     Return,
@@ -70,10 +71,65 @@ impl Cpu for Chip8 {
 
     fn advance_pc(&mut self) {
         let opcode: u16 = (self.mem[self.pc] as u16 * 256) + self.mem[self.pc + 1] as u16;
-        self.pc = if self.pc + 2 >= MAX_MEMORY { 0 } else { self.pc + 2 };
+        self.pc = if self.pc + 2 >= MAX_MEMORY { 0x200 } else { self.pc + 2 };
+        //println!("{:#02x}", self.pc);
+        match Chip8::process_opcode(&opcode) {
+            Ok(opcode) => println!("{:?}", opcode),
+            Err(e) => println!("Not found: {:#02x}", opcode)
+        }
+        //let instruction: Opcode = Chip8::process_opcode(&opcode).unwrap();
+        //println!("{:?}", instruction);
     }
 
     fn process_opcode(opcode: &u16) -> Result<Opcode, &str> {
-
+        match opcode >> 12 {
+            0x0 => match opcode & 0x00FF {
+                0xe0 => Ok(Opcode::Clear),
+                0xee => Ok(Opcode::Return),
+                _ => Err("Opcode not found")
+            },
+            0x1 => Ok(Opcode::JumpAddr),
+            0x2 => Ok(Opcode::Call),
+            0x3 => Ok(Opcode::SkipEqualVxkk),
+            0x4 => Ok(Opcode::SkipNotEqualVxkk),
+            0x5 => Ok(Opcode::SkipEqualVxVy),
+            0x6 => Ok(Opcode::LoadVxkk),
+            0x7 => Ok(Opcode::AddVxkk),
+            0x8 => match opcode & 0x000F {
+                0x0 => Ok(Opcode::LoadVxVy),
+                0x1 => Ok(Opcode::Or),
+                0x2 => Ok(Opcode::And),
+                0x3 => Ok(Opcode::Xor),
+                0x4 => Ok(Opcode::AddVxVy),
+                0x5 => Ok(Opcode::Subtract),
+                0x6 => Ok(Opcode::RightShift),
+                0x7 => Ok(Opcode::SubtractNotBorrow),
+                0xe => Ok(Opcode::LeftShift),
+                _ => Err("Opcode not found")
+            },
+            0x9 => Ok(Opcode::SkipNotEqualVxVy),
+            0xa => Ok(Opcode::LoadI),
+            0xb => Ok(Opcode::JumpAddrV0),
+            0xc => Ok(Opcode::Random),
+            0xd => Ok(Opcode::Draw),
+            0xe => match opcode & 0x00FF {
+                0x9e => Ok(Opcode::SkipIfVxPressed),
+                0xa1 => Ok(Opcode::SkipIfVxNotPressed),
+                _ => Err("Opcode not found")
+            },
+            0xf => match opcode & 0x00FF {
+                0x07 => Ok(Opcode::LoadVxDelayTimer),
+                0x0a => Ok(Opcode::LoadPressedKeyVx),
+                0x15 => Ok(Opcode::LoadDelayTimerVx),
+                0x18 => Ok(Opcode::LoadSoundTimerVx),
+                0x1e => Ok(Opcode::AddIVx),
+                0x29 => Ok(Opcode::LoadISpritePositionVx),
+                0x33 => Ok(Opcode::LoadIBCDVx),
+                0x55 => Ok(Opcode::LoadIVRegisters),
+                0x65 => Ok(Opcode::LoadVRegistersI),
+                _ => Err("Opcode not found")
+            },
+            _ => Err("Opcode not found")
+        }
     }
 }
