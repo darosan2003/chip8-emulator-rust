@@ -5,7 +5,6 @@ const MAX_REG: usize = 16;
 const MAX_STACK: usize = 16;
 const MAX_MEMORY: usize = 4096;
 
-#[derive(Debug)]
 pub enum Opcode {
     Clear,
     Return,
@@ -48,6 +47,7 @@ pub trait Cpu {
     fn load_rom(&mut self, rom: &String);
     fn advance_pc(&mut self);
     fn process_opcode(opcode: &u16) -> Result<Opcode, &str>;
+    fn do_instruction(instruction: &Opcode, opcode: &u16);
 }
 
 pub struct Chip8 {
@@ -72,13 +72,10 @@ impl Cpu for Chip8 {
     fn advance_pc(&mut self) {
         let opcode: u16 = (self.mem[self.pc] as u16 * 256) + self.mem[self.pc + 1] as u16;
         self.pc = if self.pc + 2 >= MAX_MEMORY { 0x200 } else { self.pc + 2 };
-        //println!("{:#02x}", self.pc);
         match Chip8::process_opcode(&opcode) {
-            Ok(opcode) => println!("{:?}", opcode),
-            Err(e) => println!("Not found: {:#02x}", opcode)
+            Ok(instruction) => Chip8::do_instruction(&instruction, &opcode),
+            Err(e) => println!("{}", e)
         }
-        //let instruction: Opcode = Chip8::process_opcode(&opcode).unwrap();
-        //println!("{:?}", instruction);
     }
 
     fn process_opcode(opcode: &u16) -> Result<Opcode, &str> {
@@ -130,6 +127,45 @@ impl Cpu for Chip8 {
                 _ => Err("Opcode not found")
             },
             _ => Err("Opcode not found")
+        }
+    }
+
+    fn do_instruction(instruction: &Opcode, opcode: &u16) {
+        match instruction {
+            Opcode::Clear => println!("CLS"),
+            Opcode::Return => println!("RET"),
+            Opcode::JumpAddr => println!("JP addr"),
+            Opcode::Call => println!("CALL addr"),
+            Opcode::SkipEqualVxkk => println!("SE Vx, byte"),
+            Opcode::SkipNotEqualVxkk => println!("SNE Vx, byte"),
+            Opcode::SkipEqualVxVy => println!("SE Vx, Vy"),
+            Opcode::LoadVxkk => println!("LD Vx, byte"),
+            Opcode::AddVxkk => println!("ADD Vx, byte"),
+            Opcode::LoadVxVy => println!("LD Vx, Vy"),
+            Opcode::Or => println!("OR Vx, Vy"),
+            Opcode::And => println!("AND Vx, Vy"),
+            Opcode::Xor => println!("XOR Vx, Vy"),
+            Opcode::AddVxVy => println!("ADD Vx, Vy"),
+            Opcode::Subtract => println!("SUB Vx, Vy"),
+            Opcode::RightShift => println!("SHR Vx, Vy"),
+            Opcode::SubtractNotBorrow => println!("SUBN Vx, Vy"),
+            Opcode::LeftShift => println!("SHL Vx, Vy"),
+            Opcode::SkipNotEqualVxVy => println!("SNE Vx, Vy"),
+            Opcode::LoadI => println!("LD I, addr"),
+            Opcode::JumpAddrV0 => println!("JP V0, addr"),
+            Opcode::Random => println!("RND Vx, byte"),
+            Opcode::Draw => println!("DRW Vx, Vy, nibble"),
+            Opcode::SkipIfVxPressed => println!("SKP Vx"),
+            Opcode::SkipIfVxNotPressed => println!("SKNP Vx"),
+            Opcode::LoadVxDelayTimer => println!("LD Vx, DT"),
+            Opcode::LoadPressedKeyVx => println!("LD Vx, K"),
+            Opcode::LoadDelayTimerVx => println!("LD DT, Vx"),
+            Opcode::LoadSoundTimerVx => println!("LD ST, Vx"),
+            Opcode::AddIVx => println!("ADD I, Vx"),
+            Opcode::LoadISpritePositionVx => println!("LD F, Vx"),
+            Opcode::LoadIBCDVx => println!("LD B, Vx"),
+            Opcode::LoadIVRegisters => println!("LD [I], Vx"),
+            Opcode::LoadVRegistersI => println!("LD Vx, [I]")
         }
     }
 }
