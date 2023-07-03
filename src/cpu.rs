@@ -46,8 +46,8 @@ pub trait Cpu {
     fn new() -> Self;
     fn load_rom(&mut self, rom: &String);
     fn advance_pc(&mut self);
-    fn process_opcode(opcode: &u16) -> Result<Opcode, &str>;
-    fn do_instruction(instruction: &Opcode, opcode: &u16);
+    fn process_opcode(&mut self, opcode: &u16) -> Result<Opcode, &str>;
+    fn do_instruction(&mut self, instruction: &Opcode, opcode: &u16);
 }
 
 pub struct Chip8 {
@@ -72,13 +72,13 @@ impl Cpu for Chip8 {
     fn advance_pc(&mut self) {
         let opcode: u16 = (self.mem[self.pc] as u16 * 256) + self.mem[self.pc + 1] as u16;
         self.pc = if self.pc + 2 >= MAX_MEMORY { 0x200 } else { self.pc + 2 };
-        match Chip8::process_opcode(&opcode) {
-            Ok(instruction) => Chip8::do_instruction(&instruction, &opcode),
+        match self.process_opcode(&opcode) {
+            Ok(instruction) => self.do_instruction(&instruction, &opcode),
             Err(e) => println!("{}", e)
         }
     }
 
-    fn process_opcode(opcode: &u16) -> Result<Opcode, &str> {
+    fn process_opcode(&mut self, opcode: &u16) -> Result<Opcode, &str> {
         match opcode >> 12 {
             0x0 => match opcode & 0x00FF {
                 0xe0 => Ok(Opcode::Clear),
@@ -130,24 +130,70 @@ impl Cpu for Chip8 {
         }
     }
 
-    fn do_instruction(instruction: &Opcode, opcode: &u16) {
+    fn do_instruction(&mut self, instruction: &Opcode, opcode: &u16) {
         match instruction {
             Opcode::Clear => println!("CLS"),
-            Opcode::Return => println!("RET"),
-            Opcode::JumpAddr => println!("JP addr"),
-            Opcode::Call => println!("CALL addr"),
-            Opcode::SkipEqualVxkk => println!("SE Vx, byte"),
-            Opcode::SkipNotEqualVxkk => println!("SNE Vx, byte"),
-            Opcode::SkipEqualVxVy => println!("SE Vx, Vy"),
-            Opcode::LoadVxkk => println!("LD Vx, byte"),
-            Opcode::AddVxkk => println!("ADD Vx, byte"),
-            Opcode::LoadVxVy => println!("LD Vx, Vy"),
-            Opcode::Or => println!("OR Vx, Vy"),
-            Opcode::And => println!("AND Vx, Vy"),
-            Opcode::Xor => println!("XOR Vx, Vy"),
-            Opcode::AddVxVy => println!("ADD Vx, Vy"),
-            Opcode::Subtract => println!("SUB Vx, Vy"),
-            Opcode::RightShift => println!("SHR Vx, Vy"),
+
+            Opcode::Return => if self.sp > 0 {
+                self.pc = self.stack[self.sp] as usize;
+                self.sp -= 1;
+            },
+
+            Opcode::JumpAddr => self.pc = (opcode & 0x0FFF) as usize,
+
+            Opcode::Call => if self.sp < MAX_STACK {
+                self.sp += 1;
+                self.stack[self.sp] = self.pc as u16;
+                self.pc = (opcode & 0x0FFF) as usize
+            },
+
+            Opcode::SkipEqualVxkk => if self.v[(opcode >> 8 & 0x0F) as usize] == (opcode & 0x00FF) as u8 {
+                self.pc = if self.pc + 2 >= MAX_MEMORY { 0x200 } else { self.pc + 2 };
+            } 
+            
+            Opcode::SkipNotEqualVxkk => if self.v[(opcode >> 8 & 0x0F) as usize] != (opcode & 0x00FF) as u8 {
+                self.pc = if self.pc + 2 >= MAX_MEMORY { 0x200 } else { self.pc + 2 };
+            },
+
+            Opcode::SkipEqualVxVy => if self.v[(opcode >> 8 & 0x0F) as usize] == self.v[(opcode >> 4 & 0x00F) as usize] {
+                self.pc = if self.pc + 2 >= MAX_MEMORY { 0x200 } else { self.pc + 2 };     
+            },
+
+            Opcode::LoadVxkk => self.v[(opcode >> 8 & 0x0F) as usize] = (opcode & 0x00FF) as u8,
+
+            Opcode::AddVxkk => self.v[(opcode >> 8 & 0x0F) as usize] += ((opcode & 0x00FF) as u8) & 0x00FF,
+            
+            Opcode::LoadVxVy => self.v[(opcode >> 8 & 0x0F) as usize] = self.v[(opcode >> 4 & 0x00F) as usize],
+
+            Opcode::Or => self.v[(opcode >> 8 & 0x0F) as usize] |= self.v[(opcode >> 4 & 0x00F) as usize],
+            
+            Opcode::And => self.v[(opcode >> 8 & 0x0F) as usize] &= self.v[(opcode >> 4 & 0x00F) as usize],
+            
+            Opcode::Xor => self.v[(opcode >> 8 & 0x0F) as usize] ^= self.v[(opcode >> 4 & 0x00F) as usize],
+
+            Opcode::AddVxVy => {
+                self.v[(opcode >> 8 & 0x0F) as usize] += self.v[(opcode >> 4 & 0x00F) as usize];
+                if self.v[(opcode >> 8 & 0x0F) as usize] > self.v[(opcode >> 8 & 0x0F) as usize] + self.v[(opcode >> 4 & 0x00F) as usize] {
+                    self.v[0x0F] = 1;
+                }else {
+                    self.v[0x0F] = 0;
+                }
+            },
+
+            Opcode::Subtract => {
+                if self.v[(opcode >> 8 & 0x0F) as usize] > self.v[(opcode >> 4 & 0x00F) as usize] {
+                    self.v[0x0F] = 1;
+                }else {
+                    self.v[0x0F] = 0;
+                }
+                self.v[(opcode >> 8 & 0x0F) as usize] -= self.v[(opcode >> 4 & 0x00F) as usize];
+            },
+            
+            Opcode::RightShift => {
+                self.v[0x0F] = self.v[(opcode >> 8 & 0x0F) as usize] & 1;
+                self.v[(opcode >> 8 & 0x0F) as usize] >>= 1;
+            },
+
             Opcode::SubtractNotBorrow => println!("SUBN Vx, Vy"),
             Opcode::LeftShift => println!("SHL Vx, Vy"),
             Opcode::SkipNotEqualVxVy => println!("SNE Vx, Vy"),
