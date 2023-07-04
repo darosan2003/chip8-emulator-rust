@@ -1,13 +1,17 @@
 extern crate rand;
+extern crate sdl2;
 
 use rand::Rng;
 
 use std::fs::File;
 use std::io::Read;
 
+use sdl2::rect::Point;
+
 const MAX_REG: usize = 16;
 const MAX_STACK: usize = 16;
 const MAX_MEMORY: usize = 4096;
+const SCREEN_SIZE: usize = 2048;
 
 pub enum Opcode {
     Clear,
@@ -63,11 +67,22 @@ pub struct Chip8 {
     pub sp:     usize,
     pub mem:    [u8; MAX_MEMORY],
     pub stack:  [u16; MAX_STACK],
+    pub screen: [Point; SCREEN_SIZE]
 }
 
 impl Cpu for Chip8 {
     fn new() -> Self {
-        Chip8 { v: [0;MAX_REG], dt: 0, st: 0, i: 0, pc: 0x200, sp: 0, mem: [0;MAX_MEMORY], stack: [0;MAX_STACK] }
+        Chip8 {
+            v: [0;MAX_REG],
+            dt: 0,
+            st: 0,
+            i: 0,
+            pc: 0x200,
+            sp: 0,
+            mem: [0;MAX_MEMORY],
+            stack: [0;MAX_STACK],
+            screen: [Point::new(0, 0);SCREEN_SIZE]
+        }
     }
 
     fn load_rom(&mut self, rom: &String) {
@@ -232,7 +247,10 @@ impl Cpu for Chip8 {
             
             Opcode::Random => self.v[(opcode >> 8 & 0x0F) as usize] = rand::thread_rng().gen_range(0..=255) & ((opcode & 0x00FF) as u8),
             
-            Opcode::Draw => println!("DRW Vx, Vy, nibble"),
+            Opcode::Draw => {
+                println!("DRW Vx, Vy, nibble");
+            },
+
             Opcode::SkipIfVxPressed => println!("SKP Vx"),
             Opcode::SkipIfVxNotPressed => println!("SKNP Vx"),
 
